@@ -43,16 +43,21 @@
 
             fetch(GAS_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text: text })
             })
-                .then(res => res.json())
-                .then(() => {
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error("HTTP " + res.status);
+                    }
+                    return res.text();
+                })
+                .then(data => {
+                    console.log("GAS response:", data);
                     alert("送信しました");
                     document.getElementById("input").value = "";
                 })
                 .catch(err => {
-                    alert("送信失敗: " + err);
+                    alert("送信失敗: " + err.message);
                     console.error(err);
                 });
         }
