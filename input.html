@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ことばを残す</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #111;
+            color: #fff;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            font-size: 18px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>ことばを残す</h2>
+
+    <textarea id="input"></textarea>
+    <button onclick="send()">送信</button>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzQmm2KikChkHJpvAxzAbuBVIT5YlCqXyc3f7vIkH8K3_eQ3uVJ0HpZW7xXglMF3wTX/exec";
+
+        function send() {
+            const text = document.getElementById("input").value.trim();
+            if (!text) return;
+
+            fetch(GAS_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    alert("送信しました");
+                    document.getElementById("input").value = "";
+                })
+                .catch(err => {
+                    alert("送信失敗");
+                    console.error(err);
+                });
+        }
+    </script>
+
+</body>
+
+</html>
