@@ -52,7 +52,7 @@
                     document.getElementById("input").value = "";
                 })
                 .catch(err => {
-                    alert("送信失敗");
+                    alert("送信失敗: " + err);
                     console.error(err);
                 });
         }
