@@ -615,7 +615,13 @@
                 }
                 c.setAlpha(alpha);
                 fill(c);
-                textSize(this.size);
+                let drawSize = this.size;
+
+                if (isLatest) {
+                    drawSize *= 1.6; // ← 好みで1.4〜2.0まで調整OK
+                }
+
+                textSize(drawSize);
 
                 // dynamic weight: front = slightly bolder
                 if (this.depth < 0.3) {
