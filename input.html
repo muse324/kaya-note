@@ -49,31 +49,50 @@
     <button onclick="send()">送信</button>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzVpdOrHpe6VGZ4_m3coAIMHO8U8hpgSSuwpjZaPUdDryED1V7Ykjt-RUC0SLbQ9dRr/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbycfPF2m6Z2NTovwoEcmZX2HWzKIxxmdMsTQ8udNu2o7pceN5UWm3fNfqMviVERqCns/exec";
 
         function send() {
             const text = document.getElementById("input").value.trim();
             if (!text) return;
 
-            fetch(GAS_URL, {
-                method: "POST",
-                body: JSON.stringify({ text: text })
-            })
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error("HTTP " + res.status);
-                    }
-                    return res.text();
+            // get location
+            if (!navigator.geolocation) {
+                alert("位置情報が取得できません");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                fetch(GAS_URL, {
+                    method: "POST",
+                    body: JSON.stringify({
+                        text: text,
+                        lat: lat,
+                        lng: lng
+                    })
                 })
-                .then(data => {
-                    console.log("GAS response:", data);
-                    alert("送信しました");
-                    document.getElementById("input").value = "";
-                })
-                .catch(err => {
-                    alert("送信失敗: " + err.message);
-                    console.error(err);
-                });
+                    .then(res => {
+                        if (!res.ok) {
+                            throw new Error("HTTP " + res.status);
+                        }
+                        return res.text();
+                    })
+                    .then(data => {
+                        console.log("GAS response:", data);
+                        alert("送信しました");
+                        document.getElementById("input").value = "";
+                    })
+                    .catch(err => {
+                        alert("送信失敗: " + err.message);
+                        console.error(err);
+                    });
+
+            }, err => {
+                alert("位置情報の取得に失敗しました");
+                console.error(err);
+            });
         }
     </script>
 
