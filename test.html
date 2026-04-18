@@ -307,11 +307,30 @@
                 if (isInitialLoad) {
                     isInitialLoad = false;
 
-                    // show only a few initial texts instead of all
-                    let initialCount = min(5, inputHistory.length);
+                    // show initial texts with spatial separation
+                    let initialCount = min(8, inputHistory.length);
+
                     for (let i = 0; i < initialCount; i++) {
                         let log = random(inputHistory);
-                        texts.push(new FloatingText(log.text, "#ffffff", random(0.2, 0.5), 1));
+
+                        // alternate vertical / horizontal explicitly
+                        let ft = new FloatingText(log.text, "#ffffff", random(0.2, 0.5), 1);
+
+                        // spread positions in grid-like layout
+                        let cols = 4;
+                        let colIndex = i % cols;
+                        let rowIndex = floor(i / cols);
+
+                        let xMargin = width * 0.15;
+                        let yMargin = height * 0.2;
+
+                        let xSpan = width * 0.7;
+                        let ySpan = height * 0.5;
+
+                        ft.x = xMargin + (colIndex / (cols - 1)) * xSpan + random(-20, 20);
+                        ft.y = yMargin + (rowIndex * 80) + random(-20, 20);
+
+                        texts.push(ft);
                     }
                 }
 
