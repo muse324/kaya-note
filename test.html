@@ -296,8 +296,7 @@
                     // immediate display (skip on initial bulk load)
                     // immediate display (skip on initial bulk load)
                     if (!isInitialLoad) {
-                        let processed = poeticTransform(str);
-                        texts.push(new FloatingText(processed, "#ffd400", 0.05, 2));
+                        texts.push(new FloatingText(str, "#ffd400", 0.05, 2));
                         playPopSound();
                         lastInputTime = millis();   // ← これを追加
                     }
@@ -474,7 +473,10 @@
                 if (weight > 2 && random() < 0.5) {
                     this.isHorizontal = true;
                 }
-
+                // recent highlighted input should stay readable as one full line
+                if (weight >= 2) {
+                    this.isHorizontal = true;
+                }
                 // 奥行き（0:手前〜1:奥）
                 this.depth = (depthOverride !== null)
                     ? depthOverride
@@ -876,8 +878,7 @@
             }
 
 
-            let processed = poeticTransform(str);
-            texts.push(new FloatingText(processed, "#ffd400", 0.05, 2));
+            texts.push(new FloatingText(str, "#ffd400", 0.05, 2));
             playPopSound();
             lastInputTime = millis();
         }
