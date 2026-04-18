@@ -593,17 +593,26 @@
                 drawingContext.shadowColor = "rgba(255,255,255,0.8)";
 
                 // recent: bright pink → slowly shift to yellow → then fade by depth
-                let recentColor = color(255, 80, 180); // pink
-                let midColor = color(255, 210, 0);     // yellow
+                let recentColor = color(255, 60, 160); // より強いピンク
+                let midColor = color(255, 210, 0);
                 let pastColor = lerpColor(color(255, 255, 255), color(180, 210, 255), this.depth * 0.9);
 
-                // phase1: pink → yellow (first few seconds)
-                let t1 = constrain(ageMs / 5000, 0, 1);
-                let c1 = lerpColor(recentColor, midColor, t1);
+                let isLatest = (this.birth >= lastInputTime - 50);
 
-                // phase2: yellow → depth color (later fade)
-                let t2 = constrain((ageMs - 5000) / 5000, 0, 1);
-                let c = lerpColor(c1, pastColor, t2);
+                let c;
+
+                if (isLatest) {
+                    // 最新だけピンクからスタート
+                    let t1 = constrain(ageMs / 5000, 0, 1);
+                    let c1 = lerpColor(recentColor, midColor, t1);
+
+                    let t2 = constrain((ageMs - 5000) / 5000, 0, 1);
+                    c = lerpColor(c1, pastColor, t2);
+                } else {
+                    // それ以外は最初から黄色寄り（ピンクを使わない）
+                    let t = constrain(ageMs / 4000, 0, 1);
+                    c = lerpColor(midColor, pastColor, t);
+                }
                 c.setAlpha(alpha);
                 fill(c);
                 textSize(this.size);
