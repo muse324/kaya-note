@@ -55,16 +55,11 @@
             const text = document.getElementById("input").value.trim();
             if (!text) return;
 
-            // get location
-            if (!navigator.geolocation) {
-                alert("位置情報が取得できません");
-                return;
-            }
+            // fallback: 福知山駅
+            const fallbackLat = 35.3009;
+            const fallbackLng = 135.1206;
 
-            navigator.geolocation.getCurrentPosition(position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-
+            function postWithLocation(lat, lng) {
                 fetch(GAS_URL, {
                     method: "POST",
                     body: JSON.stringify({
@@ -88,10 +83,25 @@
                         alert("送信失敗: " + err.message);
                         console.error(err);
                     });
+            }
 
+            // 位置情報が使えない場合は福知山駅座標を使う
+            if (!navigator.geolocation) {
+                postWithLocation(fallbackLat, fallbackLng);
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                postWithLocation(lat, lng);
             }, err => {
-                alert("位置情報の取得に失敗しました");
-                console.error(err);
+                console.warn("位置情報の取得に失敗したため、福知山駅の座標を使用します", err);
+                postWithLocation(fallbackLat, fallbackLng);
+            }, {
+                enableHighAccuracy: false,
+                timeout: 5000,
+                maximumAge: 60000
             });
         }
     </script>
