@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>かやのおと - display</title>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
@@ -187,12 +187,14 @@
 
 let inputHistory = [];
 
+let loadedKeys = new Set();
+
         // Googleスプレッドシートからテキストデータを読み込む
         async function loadTextsFromGoogleSheet() {
             // 公開されたGoogleスプレッドシートのCSV URLを指定
             // スプレッドシートの「ファイル→ウェブに公開」で取得したCSVのURLを指定してください
             // gidパラメータはシートごとに異なりますが省略も可
-            const url = "https://docs.google.com/spreadsheets/d/1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE/pub?output=csvcs"; // ←正しいCSV公開URLに置き換えてください
+            const url = "https://docs.google.com/spreadsheets/d/1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE/pub?output=csv";
 
             try {
                 const res = await fetch(url);
@@ -208,21 +210,28 @@ let inputHistory = [];
                 const rows = text.split("\n");
 
                 rows.forEach((row, index) => {
-                    // skip header row
                     if (index === 0) return;
 
-                    // CSV split (timestamp,text,weight)
                     const cols = row.split(",");
                     if (cols.length < 2) return;
 
+                    let timestamp = cols[0];
                     let str = cols[1].trim();
                     if (!str) return;
+
+                    let key = timestamp + "_" + str;
+                    if (loadedKeys.has(key)) return;
+                    loadedKeys.add(key);
 
                     inputHistory.push({
                         text: str,
                         time: millis(),
                         weight: parseInt(cols[2]) || 1
                     });
+
+                    // immediate display
+                    let processed = poeticTransform(str);
+                    texts.push(new FloatingText(processed, "#ffffcc", null, 1));
                 });
 
                 console.log("Loaded texts from Google Sheets:", inputHistory.length);
@@ -351,11 +360,7 @@ let inputHistory = [];
             return str.substring(0, pos) + "　" + str.substring(pos);
         }
         function pickColorByDepth(depth) {
-            let base = color(255);
-
-            // 奥ほど青寄り＆薄く
-            let c = lerpColor(color(255), color(180, 200, 255), depth);
-
+            let c = lerpColor(color(255, 255, 255), color(200, 220, 255), depth * 0.8);
             return c;
         }
         // --- rendering class ---
@@ -527,7 +532,7 @@ let inputHistory = [];
             let c = createCanvas(windowWidth, windowHeight);
             c.parent(document.body);
             textAlign(CENTER, CENTER);
-            textFont("Noto Serif JP");
+            textFont("Noto Sans JP");
             textStyle(NORMAL);
 
             // intro: start with a single text
@@ -551,6 +556,7 @@ let inputHistory = [];
 
             initAudio();
             loadTextsFromGoogleSheet();
+            setInterval(loadTextsFromGoogleSheet, 3000);
         }
 
         function draw() {
