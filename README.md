@@ -1,2 +1,3 @@
 # kaya-note
-[[test.html]]
+[view](test.html)
+
