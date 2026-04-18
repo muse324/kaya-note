@@ -40,8 +40,8 @@
         let masterComp = null;
 
         const CONFIG = {
-            maxTexts: 40,               // 上限（安定運用）
-            autoIntervalMs: 4000,       // サンプル出現間隔（ミリ秒）
+            maxTexts: 70,               // 上限（安定運用）
+            autoIntervalMs: 2500,       // サンプル出現間隔（ミリ秒）
             replayIntervalMs: 6000,     // ログ再生間隔（ミリ秒）
             startupAutoDelayMs: 2000,   // 起動直後の自動生成遅延
             startupReplayDelayMs: 5000, // 起動直後の記憶再生遅延
@@ -308,7 +308,7 @@
                     isInitialLoad = false;
 
                     // show initial texts with spatial separation
-                    let initialCount = min(8, inputHistory.length);
+                    let initialCount = min(12, inputHistory.length);
 
                     for (let i = 0; i < initialCount; i++) {
                         let log = random(inputHistory);
@@ -730,6 +730,9 @@
             if (mode === "main") {
                 if (now - lastAutoTime > CONFIG.autoIntervalMs) {
                     addRandomText();
+                    if (texts.length < 7 && random() < 0.8) {
+                        addRandomText();
+                    }
                     lastAutoTime = now;
                 }
 
