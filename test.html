@@ -271,7 +271,13 @@
                     let str = cols.slice(1, cols.length - 1).join(",");
 
                     // remove surrounding quotes if present
-                    str = str.replace(/^"|"$/g, "").trim();
+                    str = str
+                        .replace(/^"|"$/g, "")     // 外側のクォート除去
+                        .replace(/\r/g, "")        // CR除去（←重要）
+                        .replace(/\n/g, "")        // 改行除去
+                        .replace(/\uFEFF/g, "")    // BOM除去
+                        .replace(/\s+/g, " ")      // 空白正規化
+                        .trim();
 
                     if (!str) return;
 
