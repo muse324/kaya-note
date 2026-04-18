@@ -591,7 +591,15 @@
                 drawingContext.shadowBlur = map(this.depth, 0, 1, 0, 12);
                 drawingContext.shadowColor = "rgba(255,255,255,0.8)";
 
-                let c = lerpColor(this.baseCol, color(255), this.depth * 0.6);
+                // vivid recent color (yellow) → fade to bluish-white for older texts
+                let recentColor = color(255, 210, 0); // strong yellow
+                let pastColor = lerpColor(color(255, 255, 255), color(180, 210, 255), this.depth * 0.9);
+
+                // how recent this text is (0 = new, 1 = old)
+                let recency = constrain(ageMs / 4000, 0, 1);
+
+                // blend from recentColor → pastColor over time
+                let c = lerpColor(recentColor, pastColor, recency);
                 c.setAlpha(alpha);
                 fill(c);
                 textSize(this.size);
