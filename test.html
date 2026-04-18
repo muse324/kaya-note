@@ -190,24 +190,39 @@ let inputHistory = [];
         // Googleスプレッドシートからテキストデータを読み込む
         async function loadTextsFromGoogleSheet() {
             // 公開されたGoogleスプレッドシートのCSV URLを指定
-            const url = "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/export?format=csv"; // 公開設定したスプレッドシートIDに置き換える
+            // スプレッドシートの「ファイル→ウェブに公開」で取得したCSVのURLを指定してください
+            // gidパラメータはシートごとに異なりますが省略も可
+            const url = "https://docs.google.com/spreadsheets/d/1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE/export?format=csv"; // ←正しいCSV公開URLに置き換えてください
 
             try {
                 const res = await fetch(url);
                 const text = await res.text();
 
+                // if HTML is returned instead of CSV (wrong URL), ignore
+                if (text.startsWith("<!DOCTYPE html")) {
+                    console.error("CSVではなくHTMLが返っています。URLを確認してください");
+                    return;
+                }
+
                 // CSVを1行ずつ分解
                 const rows = text.split("\n");
 
-                rows.forEach(row => {
-                    let str = row.trim();
-                    if (str) {
-                        inputHistory.push({
-                            text: str,
-                            time: millis(),
-                            weight: 1
-                        });
-                    }
+                rows.forEach((row, index) => {
+                    // skip header row
+                    if (index === 0) return;
+
+                    // CSV split (timestamp,text,weight)
+                    const cols = row.split(",");
+                    if (cols.length < 2) return;
+
+                    let str = cols[1].trim();
+                    if (!str) return;
+
+                    inputHistory.push({
+                        text: str,
+                        time: millis(),
+                        weight: parseInt(cols[2]) || 1
+                    });
                 });
 
                 console.log("Loaded texts from Google Sheets:", inputHistory.length);
