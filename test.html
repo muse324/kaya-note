@@ -263,53 +263,53 @@ let loadedKeys = new Set();
                 console.error("Failed to load Google Sheets data:", e);
             }
         }
-        let sampleWords = [
-            "だれかがいる",
-            "ここではないどこか",
-            "ほどけていくことば",
-            "きこえないこえ",
-            "すぐそばの遠さ",
-            "わたしの外側",
-            "あなたの内側",
-            "触れないまま触れている",
-            "ひかりがほどける",
-            "名前を持たない音",
-            "気配だけが残る",
-            "通り過ぎていく記憶",
-            "まだ言葉にならない",
-            "こぼれたままの意味",
-            "どこにも届かない声",
-            "ここにいるようでいない",
-            "わたしは外にいる",
-            "内側に触れない",
-            "ゆらぎ続ける境界",
-            "見えているのに遠い",
-            "重ならない距離",
-            "誰のものでもない言葉",
-            "ここで消えていく",
-            "触れたはずの気配",
-            "なにも言っていないのに",
-            "ただ漂っている",
-            "ひとつ前のわたし",
-            "遅れて届く声",
-            "空気のような記憶",
-            "境界だけがある",
-            "消えきらない残響",
-            "言葉の手前で止まる",
-            "誰にも届かないまま",
-            "ここにあるはずのもの",
-            "通り抜けていく気配",
-            "ここにいるのにここではない",
-            "ことばになる前に消えていく",
-            "あなたに届かないまま残る",
-            "触れた気がして触れていない",
-            "遠くにあるはずの近さ",
-            "見えているのに掴めない",
-            "わたしの外にわたしがいる",
-            "声にならないまま響く",
-            "すれ違ったまま重ならない",
-            "ここで終わるはずだった言葉"
-        ];
+// let sampleWords = [
+//     "だれかがいる",
+//     "ここではないどこか",
+//     "ほどけていくことば",
+//     "きこえないこえ",
+//     "すぐそばの遠さ",
+//     "わたしの外側",
+//     "あなたの内側",
+//     "触れないまま触れている",
+//     "ひかりがほどける",
+//     "名前を持たない音",
+//     "気配だけが残る",
+//     "通り過ぎていく記憶",
+//     "まだ言葉にならない",
+//     "こぼれたままの意味",
+//     "どこにも届かない声",
+//     "ここにいるようでいない",
+//     "わたしは外にいる",
+//     "内側に触れない",
+//     "ゆらぎ続ける境界",
+//     "見えているのに遠い",
+//     "重ならない距離",
+//     "誰のものでもない言葉",
+//     "ここで消えていく",
+//     "触れたはずの気配",
+//     "なにも言っていないのに",
+//     "ただ漂っている",
+//     "ひとつ前のわたし",
+//     "遅れて届く声",
+//     "空気のような記憶",
+//     "境界だけがある",
+//     "消えきらない残響",
+//     "言葉の手前で止まる",
+//     "誰にも届かないまま",
+//     "ここにあるはずのもの",
+//     "通り抜けていく気配",
+//     "ここにいるのにここではない",
+//     "ことばになる前に消えていく",
+//     "あなたに届かないまま残る",
+//     "触れた気がして触れていない",
+//     "遠くにあるはずの近さ",
+//     "見えているのに掴めない",
+//     "わたしの外にわたしがいる",
+//     "声にならないまま響く",
+//     "すれ違ったまま重ならない",
+//     "ここで終わるはずだった言葉"
+// ];
         // --- text transformation ---
         function poeticTransform(str) {
 
@@ -562,15 +562,14 @@ let loadedKeys = new Set();
             // intro: start with a single text
             let word;
             let depth = 0.3;
-            let isFromHistory = inputHistory.length > 0 && random() < 0.7;
 
-            if (isFromHistory) {
+            if (inputHistory.length > 0) {
                 let log = random(inputHistory);
-                word = log.text; // no transform (raw trace)
+                word = log.text;
                 let ageNorm = constrain((millis() - log.time) / 30000, 0, 1);
                 depth = constrain(pow(ageNorm, 1.2), 0.2, 0.6);
             } else {
-                word = random(sampleWords);
+                word = "ことば"; // fallback only when sheet not yet loaded
             }
 
             texts.push(new FloatingText(word, "#ffffff", depth, 1));
@@ -581,6 +580,12 @@ let loadedKeys = new Set();
             initAudio();
             loadTextsFromGoogleSheet();
             setInterval(loadTextsFromGoogleSheet, 3000);
+            setTimeout(() => {
+                if (texts.length === 0 && inputHistory.length > 0) {
+                    let log = random(inputHistory);
+                    texts.push(new FloatingText(log.text, "#ffffff", 0.3, 1));
+                }
+            }, 1000);
         }
 
         function draw() {
@@ -666,9 +671,15 @@ let loadedKeys = new Set();
         }
         // --- text generation ---
         function addRandomText() {
-            let word = random(sampleWords);
+            if (inputHistory.length === 0) return;
+
+            let log = random(inputHistory);
+            let word = log.text;
             let depth = random(0.15, 0.85);
-            texts.push(new FloatingText(word, null, depth));
+
+            let processed = poeticTransform(word);
+            texts.push(new FloatingText(processed, null, depth));
+
             if (mode === "main" && firstMainTextTime === 0 && texts.length >= 3) {
                 firstMainTextTime = millis();
             }
