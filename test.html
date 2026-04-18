@@ -112,6 +112,29 @@
         }
 
         function playIntroSound() {
+        // --- pop sound for new text ---
+        function playPopSound() {
+            if (!audioCtx || audioCtx.state !== "running") return;
+
+            let now = audioCtx.currentTime;
+            let freq = 880 + random(-100, 100);
+
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+
+            osc.type = "triangle";
+            osc.frequency.value = freq;
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+
+            osc.connect(gain);
+            gain.connect(masterComp || audioCtx.destination);
+
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
             if (!audioCtx) return;
 
             let now = audioCtx.currentTime;
@@ -231,7 +254,8 @@ let loadedKeys = new Set();
 
                     // immediate display
                     let processed = poeticTransform(str);
-                    texts.push(new FloatingText(processed, "#ffffcc", null, 1));
+                    texts.push(new FloatingText(processed, "#fff3a0", null, 1));
+                    playPopSound();
                 });
 
                 console.log("Loaded texts from Google Sheets:", inputHistory.length);
@@ -721,7 +745,8 @@ let loadedKeys = new Set();
             }
 
             let processed = poeticTransform(str);
-            texts.push(new FloatingText(processed, "#ffff66", null, 1));
+            texts.push(new FloatingText(processed, "#fff3a0", null, 1));
+            playPopSound();
         }
 
         function mousePressed() {
