@@ -234,7 +234,7 @@
         let lastReplayTime = 0;
 
         let inputHistory = [];
-
+        let lastInputTime = 0;
         let loadedKeys = new Set();
         let isInitialLoad = true;
 
@@ -289,10 +289,12 @@
                     });
 
                     // immediate display (skip on initial bulk load)
+                    // immediate display (skip on initial bulk load)
                     if (!isInitialLoad) {
                         let processed = poeticTransform(str);
                         texts.push(new FloatingText(processed, "#fff3a0", null, 1));
                         playPopSound();
+                        lastInputTime = millis();   // ← これを追加
                     }
                 });
 
@@ -540,6 +542,17 @@
 
                 // 奥ほど薄く (stronger fade)
                 alpha *= pow(map(this.depth, 0, 1, 1.0, 0.4), 1.2);
+                // 新規投稿直後は他の文字を暗くする
+                let sinceInput = millis() - lastInputTime;
+
+                if (sinceInput < 2000) { // 2秒だけ効果
+                    let t = constrain(sinceInput / 2000, 0, 1);
+
+                    // 新規以外を暗く
+                    if (this.birth < lastInputTime - 50) {
+                        alpha *= lerp(0.3, 1.0, t);
+                    }
+                }
 
                 // layer breathing effect (same depth moves together)
                 let phase = sin(millis() * 0.0003 + this.depth * 6);
@@ -804,9 +817,11 @@
                 });
             }
 
+
             let processed = poeticTransform(str);
             texts.push(new FloatingText(processed, "#fff3a0", null, 1));
             playPopSound();
+            lastInputTime = millis();
         }
 
         function mousePressed() {
