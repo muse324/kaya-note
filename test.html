@@ -240,7 +240,13 @@ let loadedKeys = new Set();
                     if (cols.length < 2) return;
 
                     let timestamp = cols[0];
-                    let str = cols[1].trim();
+
+                    // text may contain commas → join middle columns
+                    let str = cols.slice(1, cols.length - 1).join(",");
+
+                    // remove surrounding quotes if present
+                    str = str.replace(/^"|"$/g, "").trim();
+
                     if (!str) return;
 
                     let key = timestamp + "_" + str;
