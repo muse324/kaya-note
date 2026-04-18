@@ -292,7 +292,7 @@
                     // immediate display (skip on initial bulk load)
                     if (!isInitialLoad) {
                         let processed = poeticTransform(str);
-                        texts.push(new FloatingText(processed, "#fff3a0", null, 1));
+                        texts.push(new FloatingText(processed, "#ffd400", 0.05, 2));
                         playPopSound();
                         lastInputTime = millis();   // ← これを追加
                     }
@@ -467,8 +467,12 @@
 
                 this.birth = millis();
                 this.maxLifeMs = random(CONFIG.lifeMin, CONFIG.lifeMax) * (1000 / 60);
-                this.maxLifeMs *= map(this.depth, 0, 1, 1.0, 1.6); // deeper = longer
+                this.maxLifeMs *= map(this.depth, 0, 1, 1.0, 1.6);
 
+                // 新規・重要テキストは長く残す
+                if (weight >= 2) {
+                    this.maxLifeMs *= 1.8;
+                }
                 // サイズ（手前ほど大きい）
                 this.size = map(this.depth, 0, 1, 60, 20);
 
@@ -768,6 +772,8 @@
             let weighted = inputHistory.map(e => {
                 let age = millis() - e.time;
                 let ageFactor = pow(constrain(age / 30000, 0, 1), 1.2);
+                // 新しいものを少し優遇（8秒以内）
+                let recentBoost = (age < 8000) ? 1.5 : 1.0;
                 let w = (e.weight || 1) * (0.5 + ageFactor);
                 total += w;
                 return { entry: e, w };
@@ -831,7 +837,7 @@
 
 
             let processed = poeticTransform(str);
-            texts.push(new FloatingText(processed, "#fff3a0", null, 1));
+            texts.push(new FloatingText(processed, "#ffd400", 0.05, 2));
             playPopSound();
             lastInputTime = millis();
         }
