@@ -653,7 +653,7 @@
 
             initAudio();
             loadTextsFromGoogleSheet();
-            setInterval(loadTextsFromGoogleSheet, 3000);
+            setInterval(loadTextsFromGoogleSheet, 1000);
             setTimeout(() => {
                 if (inputHistory.length > 0) {
                     let log = random(inputHistory);
