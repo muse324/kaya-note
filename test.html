@@ -641,6 +641,11 @@
                             rotate(HALF_PI);
                             text(ch, 0, 0);
                             pop();
+                        } else if (ch === "、") {
+                            push();
+                            textSize(this.size * 0.9);
+                            text(ch, cx + this.size * 0.18, cy + this.size * 0.22);
+                            pop();
                         } else {
                             text(ch, cx, cy);
                         }
