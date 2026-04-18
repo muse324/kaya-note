@@ -275,13 +275,16 @@
 
                     if (!str) return;
 
-                    let key = timestamp + "_" + str;
+                    let key = str;
                     if (loadedKeys.has(key)) return;
                     loadedKeys.add(key);
 
+                    let parsedTime = parseInt(timestamp);
+                    if (isNaN(parsedTime)) parsedTime = millis();
+
                     inputHistory.push({
                         text: str,
-                        time: millis(),
+                        time: parsedTime,
                         weight: parseInt(cols[2]) || 1
                     });
 
