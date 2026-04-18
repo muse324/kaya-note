@@ -602,7 +602,19 @@
                         let cc = color(red(c), green(c), blue(c), charAlpha);
                         fill(cc);
 
-                        text(chars[i], this.x, this.y + i * lineHeight);
+                        let ch = chars[i];
+                        let cx = this.x;
+                        let cy = this.y + i * lineHeight;
+
+                        if (ch === "ー") {
+                            push();
+                            translate(cx, cy);
+                            rotate(HALF_PI);
+                            text(ch, 0, 0);
+                            pop();
+                        } else {
+                            text(ch, cx, cy);
+                        }
                     }
                 }
                 drawingContext.shadowBlur = 0;
