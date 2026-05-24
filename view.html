@@ -464,6 +464,80 @@
         let lastInputTime = 0;
         let loadedKeys = new Set();
         let isInitialLoad = true;
+        let recentIntroTexts = [];
+        let recentSpawnPositions = [];
+        const RECENT_INTRO_TEXT_LIMIT = 4;
+        const RECENT_SPAWN_POSITION_LIMIT = 18;
+
+        function rememberIntroText(str) {
+            if (!str) return;
+            recentIntroTexts.push(str);
+            while (recentIntroTexts.length > RECENT_INTRO_TEXT_LIMIT) {
+                recentIntroTexts.shift();
+            }
+        }
+
+        function pickIntroLog() {
+            if (inputHistory.length === 0) return null;
+
+            const last = recentIntroTexts[recentIntroTexts.length - 1];
+            let candidates = inputHistory.filter(entry => entry.text !== last);
+            const fresh = candidates.filter(entry => !recentIntroTexts.includes(entry.text));
+
+            if (fresh.length > 0) {
+                candidates = fresh;
+            }
+
+            if (candidates.length === 0) {
+                candidates = inputHistory;
+            }
+
+            const log = random(candidates);
+            rememberIntroText(log.text);
+            return log;
+        }
+
+        function rememberSpawnPosition(x, y, depth, intro) {
+            recentSpawnPositions.push({ x, y, depth, intro });
+            while (recentSpawnPositions.length > RECENT_SPAWN_POSITION_LIMIT) {
+                recentSpawnPositions.shift();
+            }
+        }
+
+        function pickSoftSpawnPosition(depth, options = {}) {
+            const intro = options.intro ?? (mode === "intro");
+            const xMin = options.xMin ?? width * 0.3;
+            const xMax = options.xMax ?? width * 0.7;
+            const yMin = options.yMin ?? 0;
+            const yMax = options.yMax ?? height * map(depth, 0, 1, 1.0, 0.6);
+            const tries = options.tries || 8;
+            const minDistance = options.minDistance || (intro
+                ? map(depth, 0, 1, 96, 56)
+                : map(depth, 0, 1, 120, 60));
+
+            let fallback = null;
+
+            for (let i = 0; i < tries; i++) {
+                const pos = {
+                    x: random(xMin, xMax),
+                    y: random(yMin, yMax)
+                };
+
+                if (!fallback) fallback = pos;
+
+                const tooClose = recentSpawnPositions.some(prev => {
+                    const d = dist(pos.x, pos.y, prev.x, prev.y);
+                    const localDistance = (intro || prev.intro) ? minDistance * 0.85 : minDistance;
+                    return d < localDistance;
+                });
+
+                if (!tooClose) {
+                    return pos;
+                }
+            }
+
+            return fallback;
+        }
 
         // Googleスプレッドシートからテキストデータを読み込む
         async function loadTextsFromGoogleSheet() {
@@ -528,24 +602,26 @@
                     let initialCount = min(CONFIG.display.initialTextCount, inputHistory.length);
 
                     for (let i = 0; i < initialCount; i++) {
-                        let log = random(inputHistory);
+                        let log = pickIntroLog();
+                        if (!log) return;
 
                         // alternate vertical / horizontal explicitly
-                        let ft = new FloatingText(log.text, "#ffffff", random(0.2, 0.5), 1);
+                        let ft = new FloatingText(log.text, "#ffffff", random(0.2, 0.5), 1, false);
 
-                        // spread positions in grid-like layout
-                        let cols = 4;
-                        let colIndex = i % cols;
-                        let rowIndex = floor(i / cols);
+                        // avoid severe stacking while keeping the layout organic
+                        let pos = pickSoftSpawnPosition(ft.depth, {
+                            intro: true,
+                            xMin: width * 0.18,
+                            xMax: width * 0.82,
+                            yMin: height * 0.18,
+                            yMax: height * 0.62,
+                            minDistance: map(ft.depth, 0, 1, 140, 80),
+                            tries: 10
+                        });
 
-                        let xMargin = width * 0.15;
-                        let yMargin = height * 0.2;
-
-                        let xSpan = width * 0.7;
-                        let ySpan = height * 0.5;
-
-                        ft.x = xMargin + (colIndex / (cols - 1)) * xSpan + random(-20, 20);
-                        ft.y = yMargin + (rowIndex * 80) + random(-20, 20);
+                        ft.x = pos.x;
+                        ft.y = pos.y;
+                        rememberSpawnPosition(ft.x, ft.y, ft.depth, true);
 
                         texts.push(ft);
                     }
@@ -682,7 +758,7 @@
         }
         // --- rendering class ---
         class FloatingText {
-            constructor(str, col = null, depthOverride = null, weight = 1) {
+            constructor(str, col = null, depthOverride = null, weight = 1, rememberSpawn = true) {
                 this.str = str;
 
                 // decide layout: vertical (default) or horizontal (rare or strong memory)
@@ -706,8 +782,21 @@
                 this.y = random(height * map(this.depth, 0, 1, 1.0, 0.6));
 
                 if (mode === "intro") {
-                    this.x = width * CONFIG.intro.xCenter + random(-CONFIG.intro.jitterX, CONFIG.intro.jitterX);
-                    this.y = height * CONFIG.intro.yCenter + random(-CONFIG.intro.jitterY, CONFIG.intro.jitterY);
+                    const pos = pickSoftSpawnPosition(this.depth, {
+                        intro: true,
+                        xMin: width * CONFIG.intro.xCenter - CONFIG.intro.jitterX * 2,
+                        xMax: width * CONFIG.intro.xCenter + CONFIG.intro.jitterX * 2,
+                        yMin: height * CONFIG.intro.yCenter - CONFIG.intro.jitterY * 2,
+                        yMax: height * CONFIG.intro.yCenter + CONFIG.intro.jitterY * 2,
+                        minDistance: 48,
+                        tries: 5
+                    });
+                    this.x = pos.x;
+                    this.y = pos.y;
+                }
+
+                if (rememberSpawn) {
+                    rememberSpawnPosition(this.x, this.y, this.depth, mode === "intro");
                 }
 
                 this.birth = millis();
@@ -931,7 +1020,8 @@
                     // only after Google Sheets data is available.
                     if (mode === "intro" && texts.length === 0 && inputHistory.length > 0) {
 
-                        let log = random(inputHistory);
+                        let log = pickIntroLog();
+                        if (!log) return;
 
                         let ageNorm = constrain((millis() - log.time) / 30000, 0, 1);
                         let depth = constrain(pow(ageNorm, 1.2), 0.2, 0.6);
