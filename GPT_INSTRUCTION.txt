@@ -1,0 +1,32 @@
+最初に
+context/PROJECT_RULES.md
+と
+context/CURRENT_STATE.md
+を読んでから作業してください
+
+
+
+
+kaya-note/
+├── src/
+├── assets/
+├── context/
+│   ├── PROJECT_RULES.md
+│   ├── CURRENT_STATE.md
+│   ├── ARCHITECTURE.md
+│   ├── VISUAL_LANGUAGE.md
+│   ├── SOUND_DESIGN.md
+│   ├── FORBIDDEN_CHANGES.md
+│   ├── TODO.md
+│   ├── histories/
+│   │   ├── history-0407v1.txt
+│   │   └── history-0407v2.txt
+│   └── prompts/
+│       ├── debug.md
+│       ├── refactor.md
+│       └── exhibition-mode.md
+├── CLAUDE.md
+├── AGENTS.md
+├── README.md
+└── .cursor/
+    └── rules/
