@@ -916,19 +916,8 @@
             textFont("Noto Sans JP");
             textStyle(NORMAL);
 
-            // intro: start with a single text
-            let word;
-            let depth = 0.3;
-
-            if (inputHistory.length > 0) {
-                let log = random(inputHistory);
-                word = log.text;
-                let ageNorm = constrain((millis() - log.time) / 30000, 0, 1);
-                depth = constrain(pow(ageNorm, 1.2), 0.2, 0.6);
-
-                texts.push(new FloatingText(word, "#ffffff", depth, 1));
-            }
-            // else: do nothing (no fallback "ことば" push)
+            // intro text is now added AFTER Google Sheets load.
+            // keep setup visually empty until logs are available.
 
             introStartTime = millis();
             lastAutoTime = millis() - (CONFIG.autoIntervalMs - CONFIG.startupAutoDelayMs);
@@ -936,14 +925,29 @@
 
             initAudio();
             loadPlacesFromGoogleSheet().then(() => {
-                loadTextsFromGoogleSheet();
-                setInterval(loadTextsFromGoogleSheet, CONFIG.polling.sheetFetchIntervalMs);
-                setTimeout(() => {
-                    if (inputHistory.length > 0) {
+                loadTextsFromGoogleSheet().then(() => {
+
+                    // intro: start with one remembered text
+                    // only after Google Sheets data is available.
+                    if (mode === "intro" && texts.length === 0 && inputHistory.length > 0) {
+
                         let log = random(inputHistory);
-                        texts.push(new FloatingText(log.text, "#ffffff", 0.3, 1));
+
+                        let ageNorm = constrain((millis() - log.time) / 30000, 0, 1);
+                        let depth = constrain(pow(ageNorm, 1.2), 0.2, 0.6);
+
+                        texts.push(
+                            new FloatingText(
+                                log.text,
+                                "#ffffff",
+                                depth,
+                                log.weight || 1
+                            )
+                        );
                     }
-                }, 1000);
+                });
+
+                setInterval(loadTextsFromGoogleSheet, CONFIG.polling.sheetFetchIntervalMs);
             });
         }
 
