@@ -39,6 +39,12 @@
         let introSoundPlayed = false;
         let masterComp = null;
         const SETTINGS_STORAGE_KEY = "kaya-note-settings";
+        const PLACE_STORAGE_KEY = "kaya-note-places";
+        const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
+        const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
+        const MESSAGES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=messages`;
+        const PLACES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=places`;
+        let places = [];
 
         let CONFIG = {
             maxTexts: 70,               // 上限（安定運用）
@@ -77,6 +83,13 @@
             },
             polling: {
                 sheetFetchIntervalMs: 1000
+            },
+            place: {
+                activePlaceId: "default",
+                activePlaceName: "かや",
+                activePlaceTitle: "かやのおと",
+                recordDate: "",
+                recordLocationLabel: ""
             }
         };
 
@@ -122,6 +135,163 @@
                 console.warn("settings load failed", e);
             }
         }
+
+        function loadPlacesFromStorage() {
+            try {
+                const raw = localStorage.getItem(PLACE_STORAGE_KEY);
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                console.warn("places load failed", e);
+                return [];
+            }
+        }
+
+        function parseCsvRows(text) {
+            const rows = [];
+            let row = [];
+            let field = "";
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+
+                if (inQuotes) {
+                    if (ch === '"' && text[i + 1] === '"') {
+                        field += '"';
+                        i++;
+                    } else if (ch === '"') {
+                        inQuotes = false;
+                    } else {
+                        field += ch;
+                    }
+                } else if (ch === '"') {
+                    inQuotes = true;
+                } else if (ch === ",") {
+                    row.push(field);
+                    field = "";
+                } else if (ch === "\n") {
+                    row.push(field);
+                    rows.push(row);
+                    row = [];
+                    field = "";
+                } else if (ch !== "\r") {
+                    field += ch;
+                }
+            }
+
+            if (field || row.length) {
+                row.push(field);
+                rows.push(row);
+            }
+
+            return rows;
+        }
+
+        function cleanCsvValue(value) {
+            return String(value || "")
+                .replace(/\uFEFF/g, "")
+                .trim();
+        }
+
+        function cell(row, headers, name, fallbackIndex) {
+            const index = headers.indexOf(name);
+            return cleanCsvValue(row[index >= 0 ? index : fallbackIndex]);
+        }
+
+        async function loadPlacesFromGoogleSheet() {
+            try {
+                const res = await fetch(PLACES_CSV_URL);
+                const text = await res.text();
+
+                if (text.startsWith("<!DOCTYPE html")) {
+                    console.error("places CSVではなくHTMLが返っています。URLを確認してください");
+                    places = loadPlacesFromStorage();
+                    applyPlaceSettings();
+                    return places;
+                }
+
+                const rows = parseCsvRows(text);
+                const headers = (rows.shift() || []).map(cleanCsvValue);
+                places = rows.map(row => {
+                    const id = normalizePlaceId(cell(row, headers, "id", 0));
+                    const name = cell(row, headers, "name", 1);
+                    const title = cell(row, headers, "title", 2);
+                    const date = cell(row, headers, "date", 3);
+                    const locationLabel = cell(row, headers, "locationLabel", 4);
+
+                    if (!id || !name) return null;
+
+                    return {
+                        id,
+                        name,
+                        title: title || `${name}のおと`,
+                        date,
+                        locationLabel
+                    };
+                }).filter(Boolean);
+
+                if (places.length === 0) {
+                    places = loadPlacesFromStorage();
+                }
+
+                applyPlaceSettings();
+                return places;
+            } catch (e) {
+                console.error("Failed to load places from Google Sheets:", e);
+                places = loadPlacesFromStorage();
+                applyPlaceSettings();
+                return places;
+            }
+        }
+
+        function getActivePlace() {
+            const storedId = localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY);
+            const activeId = normalizePlaceId(storedId || CONFIG.place.activePlaceId);
+            const found = places.find(place => place.id === activeId);
+
+            if (found) {
+                return found;
+            }
+
+            if (places.length > 0) {
+                return places[0];
+            }
+
+            return {
+                id: CONFIG.place.activePlaceId,
+                name: CONFIG.place.activePlaceName,
+                title: CONFIG.place.activePlaceTitle,
+                date: CONFIG.place.recordDate,
+                locationLabel: CONFIG.place.recordLocationLabel
+            };
+        }
+
+        function applyPlaceSettings() {
+            const activePlace = getActivePlace();
+            CONFIG.place.activePlaceId = activePlace.id || "default";
+            CONFIG.place.activePlaceName = activePlace.name || "かや";
+            CONFIG.place.activePlaceTitle = activePlace.title || `${CONFIG.place.activePlaceName}のおと`;
+            CONFIG.place.recordDate = activePlace.date || "";
+            CONFIG.place.recordLocationLabel = activePlace.locationLabel || "";
+
+            document.title = CONFIG.place.activePlaceTitle;
+        }
+
+        function normalizePlaceId(value) {
+            return String(value || "")
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "-")
+                .replace(/[^a-z0-9\-_]/g, "");
+        }
+
+        function matchesActivePlace(entry) {
+            if (!entry || !entry.placeId) return false;
+            return entry.placeId === CONFIG.place.activePlaceId;
+        }
+
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -297,14 +467,8 @@
 
         // Googleスプレッドシートからテキストデータを読み込む
         async function loadTextsFromGoogleSheet() {
-            // 公開されたGoogleスプレッドシートのCSV URLを指定
-            // スプレッドシートの「ファイル→ウェブに公開」で取得したCSVのURLを指定してください
-            // gidパラメータはシートごとに異なりますが省略も可
-            //https://docs.google.com/spreadsheets/d/1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE/edit?usp=sharing
-            const url = "https://docs.google.com/spreadsheets/d/1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE/export?format=csv";
-
             try {
-                const res = await fetch(url);
+                const res = await fetch(MESSAGES_CSV_URL);
                 const text = await res.text();
 
                 // if HTML is returned instead of CSV (wrong URL), ignore
@@ -313,44 +477,42 @@
                     return;
                 }
 
-                // CSVを1行ずつ分解
-                const rows = text.split("\n");
+                const rows = parseCsvRows(text);
+                const headers = (rows.shift() || []).map(cleanCsvValue);
+                const hasPlaceIdColumn = headers.includes("placeId");
 
-                rows.forEach((row, index) => {
-                    if (index === 0) return;
-
-                    const cols = row.split(",");
-                    if (cols.length < 2) return;
-
-                    let timestamp = cols[0];
-
-                    // text may contain commas → join middle columns
-                    let str = cols[1];
-
-                    // remove surrounding quotes if present
-                    str = str
-                        .replace(/^"|"$/g, "")     // 外側のクォート除去
+                rows.forEach(row => {
+                    let timestamp = cell(row, headers, "timestamp", 0);
+                    let str = cell(row, headers, "text", 1)
                         .replace(/\r/g, "")        // CR除去（←重要）
                         .replace(/\n/g, "")        // 改行除去
-                        .replace(/\uFEFF/g, "")    // BOM除去
                         .trim();
+                    let placeId = normalizePlaceId(cell(row, headers, "placeId", 3));
+                    let placeName = cell(row, headers, "placeName", 4);
+                    let recordDate = cell(row, headers, "date", 5);
 
                     if (!str) return;
 
-                    let key = str;
+                    let key = `${timestamp}:${str}:${placeId || "none"}`;
                     if (loadedKeys.has(key)) return;
                     loadedKeys.add(key);
 
                     let parsedTime = parseInt(timestamp);
                     if (isNaN(parsedTime)) parsedTime = millis();
 
-                    inputHistory.push({
+                    let entry = {
                         text: str,
                         time: parsedTime,
-                        weight: parseInt(cols[2]) || 1
-                    });
+                        weight: parseInt(cell(row, headers, "weight", 2)) || 1,
+                        placeId: placeId || "",
+                        placeName: placeName || "",
+                        recordDate: recordDate || ""
+                    };
 
-                    // immediate display (skip on initial bulk load)
+                    if (hasPlaceIdColumn && !matchesActivePlace(entry)) return;
+
+                    inputHistory.push(entry);
+
                     // immediate display (skip on initial bulk load)
                     if (!isInitialLoad) {
                         texts.push(new FloatingText(str, "#ffd400", 0.05, 2));
@@ -746,6 +908,7 @@
         // --- p5 lifecycle ---
         function setup() {
             loadSettingsFromStorage();
+            applyPlaceSettings();
             let c = createCanvas(windowWidth, windowHeight);
             c.parent(document.body);
             applyUiSettings();
@@ -772,14 +935,16 @@
             lastReplayTime = millis() - (CONFIG.replayIntervalMs - CONFIG.startupReplayDelayMs);
 
             initAudio();
-            loadTextsFromGoogleSheet();
-            setInterval(loadTextsFromGoogleSheet, CONFIG.polling.sheetFetchIntervalMs);
-            setTimeout(() => {
-                if (inputHistory.length > 0) {
-                    let log = random(inputHistory);
-                    texts.push(new FloatingText(log.text, "#ffffff", 0.3, 1));
-                }
-            }, 1000);
+            loadPlacesFromGoogleSheet().then(() => {
+                loadTextsFromGoogleSheet();
+                setInterval(loadTextsFromGoogleSheet, CONFIG.polling.sheetFetchIntervalMs);
+                setTimeout(() => {
+                    if (inputHistory.length > 0) {
+                        let log = random(inputHistory);
+                        texts.push(new FloatingText(log.text, "#ffffff", 0.3, 1));
+                    }
+                }, 1000);
+            });
         }
 
         function draw() {
@@ -942,7 +1107,8 @@
             str = str.trim().replace(/\s+/g, " ").slice(0, 40);
             if (!str) return;
             // check if same text exists and increase weight
-            let existing = inputHistory.find(e => e.text === str);
+            let activePlace = getActivePlace();
+            let existing = inputHistory.find(e => e.text === str && e.placeId === activePlace.id);
             if (existing) {
                 existing.weight = (existing.weight || 1) + 1;
                 existing.time = millis();
@@ -950,10 +1116,13 @@
                 inputHistory.push({
                     text: str,
                     time: millis(),
-                    weight: 1
+                    weight: 1,
+                    placeId: activePlace.id || "",
+                    placeName: activePlace.name || "",
+                    recordDate: activePlace.date || "",
+                    locationLabel: activePlace.locationLabel || ""
                 });
             }
-
 
             texts.push(new FloatingText(str, "#ffd400", 0.05, 2));
             playPopSound();

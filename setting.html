@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>かやのおと - settings</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #111;
+            color: #eee;
+            font-family: sans-serif;
+            line-height: 1.7;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 32px;
+        }
+
+        h2 {
+            margin-top: 40px;
+            font-size: 20px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+
+        .block {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+
+        input,
+        select,
+        button {
+            font-size: 16px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: none;
+            margin-bottom: 12px;
+        }
+
+        input,
+        select {
+            width: 320px;
+            background: #222;
+            color: #fff;
+        }
+
+        button {
+            background: #444;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #666;
+        }
+
+        .place-item {
+            padding: 10px;
+            border: 1px solid #333;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+
+        .active {
+            border-color: #ffd400;
+            background: rgba(255, 212, 0, 0.08);
+        }
+
+        .small {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        .row {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>かやのおと - settings</h1>
+    <div class="block">
+        <h2>現在の場所</h2>
+        <label>場所を選択</label>
+        <select id="placeSelect"></select>
+        <button onclick="saveActivePlace()">この場所を使う</button>
+        <div class="small">
+            view.html は選択中の場所設定を参照します
+        </div>
+    </div>
+    <div class="block">
+        <h2>新しい場所を追加する</h2>
+        <label>場所名（表示名）</label>
+        <input id="newPlaceName" placeholder="例: 福知山 / 美山 / 新町">
+        <label>場所ID（英数字推奨・自動生成可）</label>
+        <input id="newPlaceId" placeholder="例: fukuchiyama">
+        <label>タイトル</label>
+        <input id="newPlaceTitle" placeholder="例: 福知山のおと">
+        <label>展示日</label>
+        <input type="date" id="newPlaceDate">
+        <label>場所ラベル</label>
+        <input id="newPlaceLabel" placeholder="例: JR福知山駅">
+        <button id="addPlaceButton" onclick="addPlace()">場所を追加する</button>
+    </div>
+    <div class="block">
+        <h2>登録済みの場所</h2>
+        <div id="placesList"></div>
+    </div>
+    <script>
+        const PLACE_STORAGE_KEY = "kaya-note-places";
+        const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
+        const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
+        const PLACES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=places`;
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbycfPF2m6Z2NTovwoEcmZX2HWzKIxxmdMsTQ8udNu2o7pceN5UWm3fNfqMviVERqCns/exec";
+
+        let places = [];
+
+        function normalizePlaceId(value) {
+            return String(value || "")
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "-")
+                .replace(/[^a-z0-9\-_]/g, "");
+        }
+
+        function loadLegacyPlaces() {
+            try {
+                const raw = localStorage.getItem(PLACE_STORAGE_KEY);
+                if (!raw) return [];
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (e) {
+                console.error(e);
+                return [];
+            }
+        }
+
+        function parseCsvRows(text) {
+            const rows = [];
+            let row = [];
+            let field = "";
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+
+                if (inQuotes) {
+                    if (ch === '"' && text[i + 1] === '"') {
+                        field += '"';
+                        i++;
+                    } else if (ch === '"') {
+                        inQuotes = false;
+                    } else {
+                        field += ch;
+                    }
+                } else if (ch === '"') {
+                    inQuotes = true;
+                } else if (ch === ",") {
+                    row.push(field);
+                    field = "";
+                } else if (ch === "\n") {
+                    row.push(field);
+                    rows.push(row);
+                    row = [];
+                    field = "";
+                } else if (ch !== "\r") {
+                    field += ch;
+                }
+            }
+
+            if (field || row.length) {
+                row.push(field);
+                rows.push(row);
+            }
+
+            return rows;
+        }
+
+        function cleanCsvValue(value) {
+            return String(value || "")
+                .replace(/\uFEFF/g, "")
+                .trim();
+        }
+
+        function cell(row, headers, name, fallbackIndex) {
+            const index = headers.indexOf(name);
+            return cleanCsvValue(row[index >= 0 ? index : fallbackIndex]);
+        }
+
+        function ensureActivePlace() {
+            const activeId = localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY);
+            if (places.length > 0 && !places.find(place => place.id === activeId)) {
+                localStorage.setItem(
+                    ACTIVE_PLACE_STORAGE_KEY,
+                    places[0].id
+                );
+            }
+        }
+
+        async function loadPlaces() {
+            try {
+                const res = await fetch(PLACES_CSV_URL);
+                const text = await res.text();
+
+                if (text.startsWith("<!DOCTYPE html")) {
+                    throw new Error("places CSVではなくHTMLが返っています");
+                }
+
+                const rows = parseCsvRows(text);
+                const headers = (rows.shift() || []).map(cleanCsvValue);
+                places = rows.map(row => {
+                    const id = normalizePlaceId(cell(row, headers, "id", 0));
+                    const name = cell(row, headers, "name", 1);
+                    const title = cell(row, headers, "title", 2);
+                    const date = cell(row, headers, "date", 3);
+                    const locationLabel = cell(row, headers, "locationLabel", 4);
+
+                    if (!id || !name) return null;
+
+                    return {
+                        id,
+                        name,
+                        title: title || `${name}のおと`,
+                        date,
+                        locationLabel
+                    };
+                }).filter(Boolean);
+
+                if (places.length === 0) {
+                    places = loadLegacyPlaces();
+                }
+            } catch (e) {
+                console.error(e);
+                places = loadLegacyPlaces();
+            }
+
+            ensureActivePlace();
+            render();
+        }
+
+        function saveActivePlace() {
+            const activeId = document.getElementById("placeSelect").value;
+            if (!activeId) return;
+
+            localStorage.setItem(
+                ACTIVE_PLACE_STORAGE_KEY,
+                activeId
+            );
+            render();
+            alert("現在の場所を保存しました");
+        }
+
+        async function appendPlaceToGoogleSheet(place) {
+            // Apps Script側で places シートへの append として処理する。
+            const res = await fetch(GAS_URL, {
+                method: "POST",
+                body: JSON.stringify({
+                    action: "addPlace",
+                    sheet: "places",
+                    id: place.id,
+                    name: place.name,
+                    title: place.title,
+                    date: place.date,
+                    locationLabel: place.locationLabel
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error("HTTP " + res.status);
+            }
+
+            return res.text();
+        }
+
+        async function addPlace() {
+            const name =
+                document.getElementById("newPlaceName").value.trim();
+            let id =
+                document.getElementById("newPlaceId").value.trim();
+            let title =
+                document.getElementById("newPlaceTitle").value.trim();
+            const date =
+                document.getElementById("newPlaceDate").value;
+            const label =
+                document.getElementById("newPlaceLabel").value.trim();
+            if (!name) {
+                alert("場所名を入力してください");
+                return;
+            }
+            if (!id) {
+                id = normalizePlaceId(name);
+            }
+            id = normalizePlaceId(id);
+            if (!id) {
+                alert("場所IDを英数字で入力してください");
+                return;
+            }
+            if (places.find(p => p.id === id)) {
+                alert("同じIDの場所が既に存在します");
+                return;
+            }
+
+            if (!title) {
+                title = `${name}のおと`;
+            }
+
+            const place = {
+                id,
+                name,
+                title,
+                date,
+                locationLabel: label
+            };
+            const button = document.getElementById("addPlaceButton");
+            button.disabled = true;
+
+            try {
+                await appendPlaceToGoogleSheet(place);
+            } catch (e) {
+                console.error(e);
+                alert("場所の追加に失敗しました");
+                button.disabled = false;
+                return;
+            }
+
+            places.push(place);
+            localStorage.setItem(
+                ACTIVE_PLACE_STORAGE_KEY,
+                id
+            );
+            render();
+            document.getElementById("newPlaceName").value = "";
+            document.getElementById("newPlaceId").value = "";
+            document.getElementById("newPlaceTitle").value = "";
+            document.getElementById("newPlaceDate").value = "";
+            document.getElementById("newPlaceLabel").value = "";
+            button.disabled = false;
+            alert("場所を追加しました");
+        }
+
+        function render() {
+            const activeId =
+                localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY);
+            const select =
+                document.getElementById("placeSelect");
+            select.innerHTML = "";
+            places.forEach(place => {
+                const option =
+                    document.createElement("option");
+                option.value = place.id;
+                option.textContent =
+                    `${place.name} (${place.id})`;
+                if (place.id === activeId) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            const list =
+                document.getElementById("placesList");
+            list.innerHTML = "";
+            places.forEach(place => {
+                const div =
+                    document.createElement("div");
+                div.className =
+                    "place-item" +
+                    (place.id === activeId ? " active" : "");
+                div.innerHTML = `
+                <strong>${place.name}</strong><br>
+                ID: ${place.id}<br>
+                タイトル: ${place.title || "-"}<br>
+                日付: ${place.date || "-"}<br>
+                場所: ${place.locationLabel || "-"}
+            `;
+                list.appendChild(div);
+            });
+            if (places.length === 0) {
+                list.innerHTML = `<div class="small">places シートに場所がありません</div>`;
+            }
+        }
+
+        loadPlaces();
+    </script>
+</body>
+
+</html>
