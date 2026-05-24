@@ -137,13 +137,31 @@
                         title: title || `${name}のおと`
                     };
                 }).filter(Boolean);
-                const place =
-                    places.find(item => item.id === activeId) || places[0];
 
-                if (!place || !place.title) return;
+                let place =
+                    places.find(item => item.id === activeId);
 
-                document.title = place.title;
-                document.getElementById("pageTitle").textContent = place.title;
+                // fallback:
+                // if active place is not stored yet,
+                // use first sheet entry and store it.
+                if (!place && places.length > 0) {
+                    place = places[0];
+
+                    localStorage.setItem(
+                        ACTIVE_PLACE_STORAGE_KEY,
+                        place.id
+                    );
+                }
+
+                if (!place) return;
+
+                const resolvedTitle =
+                    place.title || `${place.id}`;
+
+                document.title = resolvedTitle;
+                document.getElementById("pageTitle").textContent = resolvedTitle;
+
+                console.log("active place:", place);
             } catch (e) {
                 console.warn("place title load failed", e);
             }
