@@ -41,7 +41,7 @@
 
 <body>
 
-    <h2>ちいとま・のおと</h2>
+    <h2 id="pageTitle">ちいとま・のおと</h2>
     <p>きょう、ここにきました。</p>
     <p>15文字ぐらいまでの短いメッセージを入れてください。記帳ノート、試し書きのつもりでお気軽に🥰</p>
 
@@ -50,6 +50,104 @@
 
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbycfPF2m6Z2NTovwoEcmZX2HWzKIxxmdMsTQ8udNu2o7pceN5UWm3fNfqMviVERqCns/exec";
+        const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
+        const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
+        const PLACES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=places`;
+
+        function normalizePlaceId(value) {
+            return String(value || "")
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, "-")
+                .replace(/[^a-z0-9\-_]/g, "");
+        }
+
+        function parseCsvRows(text) {
+            const rows = [];
+            let row = [];
+            let field = "";
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+
+                if (inQuotes) {
+                    if (ch === '"' && text[i + 1] === '"') {
+                        field += '"';
+                        i++;
+                    } else if (ch === '"') {
+                        inQuotes = false;
+                    } else {
+                        field += ch;
+                    }
+                } else if (ch === '"') {
+                    inQuotes = true;
+                } else if (ch === ",") {
+                    row.push(field);
+                    field = "";
+                } else if (ch === "\n") {
+                    row.push(field);
+                    rows.push(row);
+                    row = [];
+                    field = "";
+                } else if (ch !== "\r") {
+                    field += ch;
+                }
+            }
+
+            if (field || row.length) {
+                row.push(field);
+                rows.push(row);
+            }
+
+            return rows;
+        }
+
+        function cleanCsvValue(value) {
+            return String(value || "")
+                .replace(/\uFEFF/g, "")
+                .trim();
+        }
+
+        function cell(row, headers, name, fallbackIndex) {
+            const index = headers.indexOf(name);
+            return cleanCsvValue(row[index >= 0 ? index : fallbackIndex]);
+        }
+
+        async function applyPlaceTitle() {
+            try {
+                const res = await fetch(PLACES_CSV_URL);
+                const text = await res.text();
+                if (text.startsWith("<!DOCTYPE html")) return;
+
+                const rows = parseCsvRows(text);
+                const headers = (rows.shift() || []).map(cleanCsvValue);
+                const activeId = normalizePlaceId(
+                    localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY)
+                );
+                const places = rows.map(row => {
+                    const id = normalizePlaceId(cell(row, headers, "id", 0));
+                    const name = cell(row, headers, "name", 1);
+                    const title = cell(row, headers, "title", 2);
+
+                    if (!id || !name) return null;
+
+                    return {
+                        id,
+                        title: title || `${name}のおと`
+                    };
+                }).filter(Boolean);
+                const place =
+                    places.find(item => item.id === activeId) || places[0];
+
+                if (!place || !place.title) return;
+
+                document.title = place.title;
+                document.getElementById("pageTitle").textContent = place.title;
+            } catch (e) {
+                console.warn("place title load failed", e);
+            }
+        }
 
         function send() {
             const text = document.getElementById("input").value.trim();
@@ -104,6 +202,8 @@
                 maximumAge: 60000
             });
         }
+
+        applyPlaceTitle();
     </script>
 
 </body>
