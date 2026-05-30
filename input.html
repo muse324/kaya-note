@@ -41,7 +41,7 @@
 
 <body>
 
-    <h2 id="pageTitle">ちいとま・のおと</h2>
+    <h2 id="pageTitle">とき・のおと</h2>
     <p>きょう、ここにきました。</p>
     <p>15文字ぐらいまでの短いメッセージを入れてください。記帳ノート、試し書きのつもりでお気軽に🥰</p>
 
@@ -119,7 +119,7 @@
             try {
                 const res = await fetch(PLACES_CSV_URL);
                 const text = await res.text();
-                if (text.startsWith("<!DOCTYPE html")) return;
+                if (text.startsWith("<!DOCTYPE html") || text.startsWith("<html")) return null;
 
                 const rows = parseCsvRows(text);
                 const headers = (rows.shift() || []).map(cleanCsvValue);
@@ -159,7 +159,7 @@
                     );
                 }
 
-                if (!place) return;
+                if (!place) return null;
                 activePlace = place;
 
                 const resolvedTitle =
@@ -169,30 +169,113 @@
                 document.getElementById("pageTitle").textContent = resolvedTitle;
 
                 console.log("active place:", place);
+                return place;
             } catch (e) {
                 console.warn("place title load failed", e);
+                return null;
             }
         }
 
-        function send() {
+        function assertGasSuccess(text) {
+            const body = String(text || "").trim();
+
+            if (
+                body.startsWith("<!DOCTYPE html") ||
+                body.startsWith("<html")
+            ) {
+                throw new Error("Apps ScriptがHTMLを返しました。公開設定または権限を確認してください");
+            }
+
+            if (!body) {
+                throw new Error("Apps Scriptの応答が空です");
+            }
+
+            try {
+                const data = JSON.parse(body);
+                const status = String(data.status || data.result || "").toLowerCase();
+
+                if (
+                    data.ok === true ||
+                    data.success === true ||
+                    status === "ok" ||
+                    status === "success"
+                ) {
+                    return;
+                }
+                if (
+                    data.ok === false ||
+                    data.success === false ||
+                    status === "error" ||
+                    data.error
+                ) {
+                    throw new Error(data.message || data.error || body);
+                }
+            } catch (e) {
+                if (!(e instanceof SyntaxError)) throw e;
+            }
+
+            if (/^(ok|success|saved|done|appended)$/i.test(body)) {
+                return;
+            }
+            if (/error|exception|failed|unauthori[sz]ed|permission|権限|失敗/i.test(body)) {
+                throw new Error(body.slice(0, 120));
+            }
+
+            throw new Error("Apps Scriptの成功応答を確認できません: " + body.slice(0, 80));
+        }
+
+        function getLocation() {
+            // fallback: 福知山駅
+            const fallback = {
+                lat: 35.3009,
+                lng: 135.1206
+            };
+
+            if (!navigator.geolocation) {
+                return Promise.resolve(fallback);
+            }
+
+            return new Promise(resolve => {
+                navigator.geolocation.getCurrentPosition(position => {
+                    resolve({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                }, err => {
+                    console.warn("位置情報の取得に失敗したため、福知山駅の座標を使用します", err);
+                    resolve(fallback);
+                }, {
+                    enableHighAccuracy: false,
+                    timeout: 5000,
+                    maximumAge: 60000
+                });
+            });
+        }
+
+        async function send() {
             const text = document.getElementById("input").value.trim();
             if (!text) return;
 
-            // fallback: 福知山駅
-            const fallbackLat = 35.3009;
-            const fallbackLng = 135.1206;
+            try {
+                if (!activePlace) {
+                    await applyPlaceTitle();
+                }
+                if (!activePlace) {
+                    throw new Error("場所情報を読み込めませんでした");
+                }
 
-            function postWithLocation(lat, lng) {
-                const placeId = normalizePlaceId(
-                    activePlace?.id ||
-                    localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY)
-                );
+                const placeId = normalizePlaceId(activePlace.id);
+                if (!placeId) {
+                    throw new Error("場所IDを取得できませんでした");
+                }
+
                 const placeName =
-                    activePlace?.locationLabel ||
-                    activePlace?.name ||
+                    activePlace.locationLabel ||
+                    activePlace.name ||
                     placeId;
+                const location = await getLocation();
 
-                fetch(GAS_URL, {
+                const res = await fetch(GAS_URL, {
                     method: "POST",
                     body: JSON.stringify({
                         action: "addMessage",
@@ -201,46 +284,25 @@
                         weight: 1,
                         placeId: placeId,
                         placeName: placeName,
-                        date: activePlace?.date || "",
-                        lat: lat,
-                        lng: lng
+                        date: activePlace.date || "",
+                        lat: location.lat,
+                        lng: location.lng
                     })
-                })
-                    .then(res => {
-                        if (!res.ok) {
-                            throw new Error("HTTP " + res.status);
-                        }
-                        return res.text();
-                    })
-                    .then(data => {
-                        console.log("GAS response:", data);
-                        alert("送信しました");
-                        document.getElementById("input").value = "";
-                    })
-                    .catch(err => {
-                        alert("送信失敗: " + err.message);
-                        console.error(err);
-                    });
-            }
+                });
 
-            // 位置情報が使えない場合は福知山駅座標を使う
-            if (!navigator.geolocation) {
-                postWithLocation(fallbackLat, fallbackLng);
-                return;
-            }
+                if (!res.ok) {
+                    throw new Error("HTTP " + res.status);
+                }
 
-            navigator.geolocation.getCurrentPosition(position => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                postWithLocation(lat, lng);
-            }, err => {
-                console.warn("位置情報の取得に失敗したため、福知山駅の座標を使用します", err);
-                postWithLocation(fallbackLat, fallbackLng);
-            }, {
-                enableHighAccuracy: false,
-                timeout: 5000,
-                maximumAge: 60000
-            });
+                const data = await res.text();
+                console.log("GAS response:", data);
+                assertGasSuccess(data);
+                alert("送信しました");
+                document.getElementById("input").value = "";
+            } catch (err) {
+                alert("送信失敗: " + err.message);
+                console.error(err);
+            }
         }
 
         applyPlaceTitle();
