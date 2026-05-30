@@ -32,7 +32,7 @@
 
         let texts = [];
         let mode = "intro";
-        let introStartTime = 0;
+        let introStartTime = null;
         let mainStartTime = 0;
         let firstMainTextTime = 0;
         let audioCtx = null;
@@ -467,7 +467,7 @@
         let recentIntroTexts = [];
         let recentSpawnPositions = [];
         const RECENT_INTRO_TEXT_LIMIT = 4;
-        const RECENT_SPAWN_POSITION_LIMIT = 18;
+        const RECENT_SPAWN_POSITION_LIMIT = 24;
 
         function rememberIntroText(str) {
             if (!str) return;
@@ -480,14 +480,11 @@
         function pickIntroLog() {
             if (inputHistory.length === 0) return null;
 
-            const last = recentIntroTexts[recentIntroTexts.length - 1];
-            let candidates = inputHistory.filter(entry => entry.text !== last);
-            const fresh = candidates.filter(entry => !recentIntroTexts.includes(entry.text));
-
-            if (fresh.length > 0) {
-                candidates = fresh;
+            let candidates = inputHistory.filter(entry => !recentIntroTexts.includes(entry.text));
+            if (candidates.length === 0) {
+                const last = recentIntroTexts[recentIntroTexts.length - 1];
+                candidates = inputHistory.filter(entry => entry.text !== last);
             }
-
             if (candidates.length === 0) {
                 candidates = inputHistory;
             }
@@ -615,8 +612,8 @@
                             xMax: width * 0.82,
                             yMin: height * 0.18,
                             yMax: height * 0.62,
-                            minDistance: map(ft.depth, 0, 1, 140, 80),
-                            tries: 10
+                            minDistance: map(ft.depth, 0, 1, 180, 100),
+                            tries: 12
                         });
 
                         ft.x = pos.x;
@@ -1008,32 +1005,39 @@
             // intro text is now added AFTER Google Sheets load.
             // keep setup visually empty until logs are available.
 
-            introStartTime = millis();
             lastAutoTime = millis() - (CONFIG.autoIntervalMs - CONFIG.startupAutoDelayMs);
             lastReplayTime = millis() - (CONFIG.replayIntervalMs - CONFIG.startupReplayDelayMs);
 
             initAudio();
             loadPlacesFromGoogleSheet().then(() => {
                 loadTextsFromGoogleSheet().then(() => {
+                    introStartTime = millis();
 
-                    // intro: start with one remembered text
-                    // only after Google Sheets data is available.
-                    if (mode === "intro" && texts.length === 0 && inputHistory.length > 0) {
-
+                    // intro: start with one remembered text only when no bulk intro was generated
+                    if (mode === "intro" && texts.length === 0) {
                         let log = pickIntroLog();
-                        if (!log) return;
 
-                        let ageNorm = constrain((millis() - log.time) / 30000, 0, 1);
-                        let depth = constrain(pow(ageNorm, 1.2), 0.2, 0.6);
+                        if (log) {
+                            let ageNorm = constrain((millis() - log.time) / 30000, 0, 1);
+                            let depth = constrain(pow(ageNorm, 1.2), 0.2, 0.6);
 
-                        texts.push(
-                            new FloatingText(
-                                log.text,
+                            texts.push(
+                                new FloatingText(
+                                    log.text,
+                                    "#ffffff",
+                                    depth,
+                                    log.weight || 1
+                                )
+                            );
+                        } else {
+                            // fallback for places with no matching history
+                            texts.push(new FloatingText(
+                                CONFIG.place.activePlaceTitle || CONFIG.place.activePlaceName || "かやのおと",
                                 "#ffffff",
-                                depth,
-                                log.weight || 1
-                            )
-                        );
+                                0.4,
+                                1
+                            ));
+                        }
                     }
                 });
 
@@ -1046,7 +1050,7 @@
 
 
             // intro phase control
-            if (mode === "intro") {
+            if (mode === "intro" && introStartTime !== null) {
                 let elapsed = millis() - introStartTime;
 
                 // wait until intro text fully fades out
