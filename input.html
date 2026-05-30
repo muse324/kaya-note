@@ -53,6 +53,7 @@
         const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
         const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
         const PLACES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=places`;
+        let activePlace = null;
 
         function normalizePlaceId(value) {
             return String(value || "")
@@ -129,12 +130,17 @@
                     const id = normalizePlaceId(cell(row, headers, "id", 0));
                     const name = cell(row, headers, "name", 1);
                     const title = cell(row, headers, "title", 2);
+                    const date = cell(row, headers, "date", 3);
+                    const locationLabel = cell(row, headers, "locationLabel", 4);
 
                     if (!id || !name) return null;
 
                     return {
                         id,
-                        title: title || `${name}のおと`
+                        name,
+                        title: title || `${name}のおと`,
+                        date,
+                        locationLabel
                     };
                 }).filter(Boolean);
 
@@ -154,6 +160,7 @@
                 }
 
                 if (!place) return;
+                activePlace = place;
 
                 const resolvedTitle =
                     place.title || `${place.id}`;
@@ -176,10 +183,25 @@
             const fallbackLng = 135.1206;
 
             function postWithLocation(lat, lng) {
+                const placeId = normalizePlaceId(
+                    activePlace?.id ||
+                    localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY)
+                );
+                const placeName =
+                    activePlace?.locationLabel ||
+                    activePlace?.name ||
+                    placeId;
+
                 fetch(GAS_URL, {
                     method: "POST",
                     body: JSON.stringify({
+                        action: "addMessage",
+                        sheet: "messages",
                         text: text,
+                        weight: 1,
+                        placeId: placeId,
+                        placeName: placeName,
+                        date: activePlace?.date || "",
                         lat: lat,
                         lng: lng
                     })
