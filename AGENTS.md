@@ -39,7 +39,7 @@ Never:
 
 作成したファイル、上書きしたファイル、削除したファイル、移動したファイルが生じた場合、これらの変更箇所について
 
-- history/HISTORY_FORMAT.md
+- contexts/history/HISTORY_FORMAT.md
 
 に従って変更記録をつけること。
 簡潔なコミットメッセージを提案する。
