@@ -707,9 +707,19 @@
             return s;
         }
         function cutEnding(str) {
-            if (str.length <= 2) return str;
+            if (str.length <= 4) return str;
             let cut = floor(random(1, str.length / 2));
-            return str.substring(0, str.length - cut);
+            let candidate = str.substring(0, str.length - cut);
+
+            if (/[、。.　 ]$/.test(candidate)) {
+                return candidate;
+            }
+            for (let i = candidate.length - 1; i >= Math.max(1, candidate.length - 6); i--) {
+                if ("、。.　 ".includes(candidate[i])) {
+                    return candidate.substring(0, i + 1);
+                }
+            }
+            return str;
         }
         function splitPhrase(str) {
             if (str.length <= 3) return str;
@@ -740,14 +750,14 @@
 
             let fragment = str.substring(start, end);
 
-            return str + "\n" + fragment;
+            return str + fragment;
         }
         function insertPause(str) {
             if (str.length <= 2) return str;
 
             let pos = floor(random(1, str.length - 1));
 
-            return str.substring(0, pos) + "　" + str.substring(pos);
+            return str.substring(0, pos) + "…" + str.substring(pos);
         }
         function pickColorByDepth(depth) {
             let c = lerpColor(color(255, 255, 255), color(200, 220, 255), depth * 0.8);
@@ -756,7 +766,10 @@
         // --- rendering class ---
         class FloatingText {
             constructor(str, col = null, depthOverride = null, weight = 1, rememberSpawn = true) {
-                this.str = str;
+                this.str = String(str || "")
+                    .replace(/\r?\n/g, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
 
                 // decide layout: vertical (default) or horizontal (rare or strong memory)
                 this.isHorizontal = false;
