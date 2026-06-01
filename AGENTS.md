@@ -2,15 +2,47 @@
 
 Before making changes, always read:
 
-- context/PROJECT_RULES.md
-- context/CURRENT_STATE.md
-- context/FORBIDDEN_CHANGES.md
+- contexts/CURRENT_PROJECT.md
+- contexts/CURRENT_STATE.md
+- contexts/PROJECT_RULES.md
+- contexts/FORBIDDEN_CHANGES.md
+
+Role of each file:
+
+- CURRENT_PROJECT.md
+    - 作品仕様書
+    - 表現意図
+    - 展示条件
+    - デザイン原則
+    - 未解決の表現課題
+
+- CURRENT_STATE.md
+    - 実装状態書
+    - システム構成
+    - データ構造
+    - 実装済み機能
+    - 技術的制約
+
+Consistency rules:
+
+- CURRENT_PROJECT.md を作品意図の一次情報とする
+- CURRENT_STATE.md を実装状態の一次情報とする
+- 両者に矛盾がある場合は勝手に解釈せず報告する
+- 実装変更時は CURRENT_STATE.md の更新要否を確認する
+- 表現・展示方針変更時は CURRENT_PROJECT.md の更新要否を確認する
+
+When both files exist:
+
+- Preserve consistency between CURRENT_PROJECT.md and CURRENT_STATE.md
+- Treat CURRENT_PROJECT.md as the source of truth for artistic intent and exhibition design
+- Treat CURRENT_STATE.md as the source of truth for implementation details
+- If a conflict is detected, do not silently choose one; explain the discrepancy and ask for clarification
 
 If relevant, also read:
 
-- context/SOUND_DESIGN.md
-- context/VISUAL_DESIGN.md
-- context/EXHIBITION_CONTEXT.md
+- contexts/SOUND_DESIGN.md
+- contexts/VISUAL_DESIGN.md
+- contexts/EXHIBITION_CONTEXT.md
 
 Rules:
 

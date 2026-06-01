@@ -78,7 +78,7 @@
                 verticalLineHeight: 1.4,
                 focusDimStrength: 0.15,
                 focusDurationMs: 2000,
-                initialTextCount: 12,
+                initialTextCount: 1,
                 recentLifetimeBoost: 1.8
             },
             polling: {
@@ -595,14 +595,14 @@
                 if (isInitialLoad) {
                     isInitialLoad = false;
 
-                    // show initial texts with spatial separation
-                    let initialCount = min(CONFIG.display.initialTextCount, inputHistory.length);
+                    // intro begins from one actual message, even if old settings remain.
+                    let initialCount = Math.min(CONFIG.display.initialTextCount, inputHistory.length, 1);
 
                     for (let i = 0; i < initialCount; i++) {
                         let log = pickIntroLog();
                         if (!log) return;
 
-                        // alternate vertical / horizontal explicitly
+                        // keep the actual message raw and spatially separated
                         let ft = new FloatingText(log.text, "#ffffff", random(0.2, 0.5), 1, false);
 
                         // avoid severe stacking while keeping the layout organic
@@ -1026,7 +1026,7 @@
                 loadTextsFromGoogleSheet().then(() => {
                     introStartTime = millis();
 
-                    // intro: start with one remembered text only when no bulk intro was generated
+                    // intro: start with one remembered text only when no initial intro was generated
                     if (mode === "intro" && texts.length === 0) {
                         let log = pickIntroLog();
 

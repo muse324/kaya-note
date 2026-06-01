@@ -3,14 +3,19 @@
 ## 現在の実装
 
 - intro → silence → main → guide 構造
-- 音はintroのみ
+- silence は独立modeではなく、intro text消滅後に main へ移行する余白として成立
+- intro は実際の messages から1件のみ表示
+- 音はintro中心だが限定しない
+- 新規入力取得時にも playPopSound が鳴る
+- sound あり / なし の管理画面設定は未実装
 - ガイドは3テキスト後に遅延表示
-- Google Spreadsheet ベース構成へ移行中
+- Google Spreadsheet ベース構成を正式採用
 - messages / places の2シート構成
 - place ごとの表示フィルタ実装済み
 - input.html / view.html / setting.html が place 情報を共有
 - page title は places.title を参照
 - activePlaceId は localStorage に保持
+- 表示フォントは Noto Sans JP
 
 ## 現在のスプレッドシート構造
 
@@ -46,20 +51,24 @@ columns:
 - view.html は messages を activePlaceId でフィルタ
 - view.html の Spreadsheet ID は正しい ID に修正済み
 - intro text が Google Sheets 非同期ロード後に生成される構造へ変更済み
+- intro text は activePlaceId に一致する実メッセージから1件のみ生成
+- activePlaceId に一致する messages が0件の場合は place title を fallback 表示
 - intro text の連続重複を避けるため recentIntroTexts を追加
 - intro / emergence の過剰な重なりを避けるため recentSpawnPositions を追加
 
 ## 現在の注意点
 
 - messages.placeId と activePlaceId が一致しない場合、その場所では inputHistory が空になる
-- 確認時点で fukuchisha の messages は0件
+- activePlaceId に一致する messages が0件の場合、main の自動生成と記憶再出現は実質的に発生しない
 - Apps Script 側は messages / places の append 処理を維持する必要がある
 - Google Sheets 読み込みに失敗した場合、places は旧 localStorage を fallback として読む
+- messages 読み込み失敗時の local fallback は現在ない
 
 ## 未解決
 
 - intro位置
 - chord decay
 - arpeggio curve
+- sound あり / なし 設定
 - layer breathing 強度
 - 実展示環境での visibility 調整
