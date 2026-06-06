@@ -125,6 +125,21 @@
             }
         }
 
+        function persistActivePlaceId(placeId) {
+            if (!placeId) return;
+            localStorage.setItem(ACTIVE_PLACE_STORAGE_KEY, placeId);
+        }
+
+        function removePlaceQueryParam() {
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.delete(PLACE_QUERY_PARAM);
+                window.history.replaceState({}, "", url.toString());
+            } catch (e) {
+                // ignore
+            }
+        }
+
         async function applyPlaceTitle() {
             try {
                 const res = await fetch(PLACES_CSV_URL);
@@ -162,10 +177,7 @@
                     if (!activeId && places.length > 0) {
                         // fallback: if no active place is stored yet, use the first sheet entry.
                         place = places[0];
-                        localStorage.setItem(
-                            ACTIVE_PLACE_STORAGE_KEY,
-                            place.id
-                        );
+                        persistActivePlaceId(place.id);
                     } else if (activeId) {
                         // preserve the selected active place even when the sheet isn't updated yet.
                         place = {
@@ -178,8 +190,11 @@
                     }
                 }
 
+                if (activeId) {
+                    persistActivePlaceId(activeId);
+                }
                 if (urlPlaceId) {
-                    localStorage.setItem(ACTIVE_PLACE_STORAGE_KEY, activeId);
+                    removePlaceQueryParam();
                 }
 
                 if (!place) return null;
