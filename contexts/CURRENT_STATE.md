@@ -76,4 +76,11 @@ columns:
 - arpeggio curve
 - sound あり / なし 設定
 - layer breathing 強度
-- 実展示環境での visibility 調整
+
+## 現地テスト用機能
+
+- FIELD_TEST_MODE 定数を view.html に追加
+- true に変更すると屋外・半屋外投影テスト向けの視認性向上モードが有効化
+- テキスト透明度 1.4 倍、サイズ 1.3 倍、breathing 効果を 95-105% に縮小
+- ガイドテキストも 1.1-1.2 倍に拡大
+- デフォルトは false（通常表示）

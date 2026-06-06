@@ -30,6 +30,10 @@
     <img id="qrOverlay" src="qr.png" alt="QR Code">
     <script>
 
+        // === 現地視認性検証モード ===
+        // true にすると屋外・半屋外での投影テストに適した視認性を提供します
+        const FIELD_TEST_MODE = false;
+
         let texts = [];
         let mode = "intro";
         let introStartTime = null;
@@ -915,6 +919,13 @@
 
                 // 奥ほど薄く (stronger fade)
                 alpha *= pow(map(this.depth, 0, 1, 1.0, 0.4), 1.2);
+                
+                // FIELD_TEST_MODE: 視認性向上
+                if (FIELD_TEST_MODE) {
+                    alpha *= 1.4; // 透明度を大幅に上げる（最大100%より濃く見える）
+                    alpha = constrain(alpha, 0, 255);
+                }
+                
                 // 新規投稿直後は他の文字を暗くする
                 let sinceInput = millis() - lastInputTime;
 
@@ -930,6 +941,12 @@
                 // layer breathing effect (same depth moves together)
                 let phase = sin(millis() * 0.0003 + this.depth * 6);
                 let breath = map(phase, -1, 1, 0.85, 1.15);
+                
+                // FIELD_TEST_MODE: breathing 効果を抑制（安定表示）
+                if (FIELD_TEST_MODE) {
+                    breath = map(phase, -1, 1, 0.95, 1.05);
+                }
+                
                 alpha *= breath;
 
                 drawingContext.shadowBlur = map(this.depth, 0, 1, 0, 12);
@@ -962,6 +979,11 @@
 
                 if (isLatest) {
                     drawSize *= CONFIG.display.latestScale;
+                }
+                
+                // FIELD_TEST_MODE: テキストサイズを大幅に拡大
+                if (FIELD_TEST_MODE) {
+                    drawSize *= 1.3;
                 }
 
                 textSize(drawSize);
@@ -1143,6 +1165,11 @@
                 if (t > 0) {
                     let fade = constrain(t / 1500, 0, 1);
                     let guideAlpha = 180 * fade;
+                    
+                    // FIELD_TEST_MODE: ガイドテキストをより見やすく
+                    if (FIELD_TEST_MODE) {
+                        guideAlpha = 255 * fade;
+                    }
 
                     push();
                     textAlign(CENTER, CENTER);
@@ -1151,16 +1178,31 @@
                     // title / concept
                     fill(220, 230, 255, guideAlpha);
                     textSize(CONFIG.ui.guideTitleSize);
+                    let guideTitleSize = CONFIG.ui.guideTitleSize;
+                    if (FIELD_TEST_MODE) {
+                        guideTitleSize *= 1.2;
+                        textSize(guideTitleSize);
+                    }
                     text("ここに流れる言葉は、この場所に来て、残していった「誰かの思い出」です", width * 0.5, height * CONFIG.ui.guideY1);
 
                     // explanation
                     fill(230, 230, 230, guideAlpha);
                     textSize(CONFIG.ui.guideBodySize);
+                    let guideBodySize = CONFIG.ui.guideBodySize;
+                    if (FIELD_TEST_MODE) {
+                        guideBodySize *= 1.1;
+                        textSize(guideBodySize);
+                    }
                     text("時間の中に沈み、また浮かび上がります", width * 0.5, height * CONFIG.ui.guideY2);
 
                     // input instruction
                     fill(255, 240, 180, guideAlpha);
                     textSize(CONFIG.ui.guideInputSize);
+                    let guideInputSize = CONFIG.ui.guideInputSize;
+                    if (FIELD_TEST_MODE) {
+                        guideInputSize *= 1.2;
+                        textSize(guideInputSize);
+                    }
                     text("ここに言葉を残すことができます", width * 0.5, height * CONFIG.ui.guideY3);
 
                     pop();
