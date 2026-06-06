@@ -13,6 +13,9 @@
 - messages / places の2シート構成
 - place ごとの表示フィルタ実装済み
 - input.html / view.html / setting.html が place 情報を共有
+- setting.html の「この場所を使う」で選択した activePlaceId を localStorage に保存
+- input.html / view.html に storage イベントを追加し、別タブで場所変更があれば即時反映
+- view.html は場所変更時にテキスト表示をリセットして再読み込み
 - page title は places.title を参照
 - activePlaceId は localStorage に保持
 - 表示フォントは Noto Sans JP

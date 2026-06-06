@@ -147,16 +147,24 @@
                 let place =
                     places.find(item => item.id === activeId);
 
-                // fallback:
-                // if active place is not stored yet,
-                // use first sheet entry and store it.
-                if (!place && places.length > 0) {
-                    place = places[0];
-
-                    localStorage.setItem(
-                        ACTIVE_PLACE_STORAGE_KEY,
-                        place.id
-                    );
+                if (!place) {
+                    if (!activeId && places.length > 0) {
+                        // fallback: if no active place is stored yet, use the first sheet entry.
+                        place = places[0];
+                        localStorage.setItem(
+                            ACTIVE_PLACE_STORAGE_KEY,
+                            place.id
+                        );
+                    } else if (activeId) {
+                        // preserve the selected active place even when the sheet isn't updated yet.
+                        place = {
+                            id: activeId,
+                            name: activeId,
+                            title: activeId,
+                            date: "",
+                            locationLabel: ""
+                        };
+                    }
                 }
 
                 if (!place) return null;
@@ -305,6 +313,12 @@
                 console.error(err);
             }
         }
+
+        window.addEventListener("storage", event => {
+            if (event.key === ACTIVE_PLACE_STORAGE_KEY) {
+                applyPlaceTitle();
+            }
+        });
 
         applyPlaceTitle();
     </script>

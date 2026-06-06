@@ -255,14 +255,14 @@
                 return found;
             }
 
-            if (places.length > 0) {
+            if (!activeId && places.length > 0) {
                 return places[0];
             }
 
             return {
-                id: CONFIG.place.activePlaceId,
-                name: CONFIG.place.activePlaceName,
-                title: CONFIG.place.activePlaceTitle,
+                id: activeId || CONFIG.place.activePlaceId,
+                name: activeId || CONFIG.place.activePlaceName,
+                title: activeId || CONFIG.place.activePlaceTitle,
                 date: CONFIG.place.recordDate,
                 locationLabel: CONFIG.place.recordLocationLabel
             };
@@ -278,6 +278,16 @@
 
             document.title = CONFIG.place.activePlaceTitle;
         }
+
+        window.addEventListener("storage", event => {
+            if (event.key === ACTIVE_PLACE_STORAGE_KEY) {
+                applyPlaceSettings();
+                texts = [];
+                inputHistory = [];
+                loadedKeys.clear();
+                loadTextsFromGoogleSheet();
+            }
+        });
 
         function normalizePlaceId(value) {
             return String(value || "")
