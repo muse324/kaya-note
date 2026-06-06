@@ -14,6 +14,8 @@
 - place ごとの表示フィルタ実装済み
 - input.html / view.html / setting.html が place 情報を共有
 - setting.html の「この場所を使う」で選択した activePlaceId を localStorage に保存
+- input.html は URL クエリ `place` から activePlaceId を取得できるようになった
+- view.html は QR を `input.html?place=<id>` で生成し、スマホ端末でも場所情報が受け継がれるようになった
 - input.html / view.html に storage イベントを追加し、別タブで場所変更があれば即時反映
 - view.html は場所変更時にテキスト表示をリセットして再読み込み
 - page title は places.title を参照

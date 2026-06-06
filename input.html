@@ -51,6 +51,7 @@
     <script>
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzzzVbVPn5Uw7cVMzvBYgnk_otNhW5gVJc_9WOTVUYY_yvNaj_dnrqEgKP-b3GhgcCM/exec";
         const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
+        const PLACE_QUERY_PARAM = "place";
         const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
         const PLACES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=places`;
         let activePlace = null;
@@ -115,6 +116,15 @@
             return cleanCsvValue(row[index >= 0 ? index : fallbackIndex]);
         }
 
+        function getPlaceIdFromUrl() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                return normalizePlaceId(params.get(PLACE_QUERY_PARAM) || "");
+            } catch (e) {
+                return "";
+            }
+        }
+
         async function applyPlaceTitle() {
             try {
                 const res = await fetch(PLACES_CSV_URL);
@@ -123,8 +133,9 @@
 
                 const rows = parseCsvRows(text);
                 const headers = (rows.shift() || []).map(cleanCsvValue);
+                const urlPlaceId = getPlaceIdFromUrl();
                 const activeId = normalizePlaceId(
-                    localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY)
+                    urlPlaceId || localStorage.getItem(ACTIVE_PLACE_STORAGE_KEY)
                 );
                 const places = rows.map(row => {
                     const id = normalizePlaceId(cell(row, headers, "id", 0));
@@ -165,6 +176,10 @@
                             locationLabel: ""
                         };
                     }
+                }
+
+                if (urlPlaceId) {
+                    localStorage.setItem(ACTIVE_PLACE_STORAGE_KEY, activeId);
                 }
 
                 if (!place) return null;
