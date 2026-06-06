@@ -92,6 +92,17 @@
 <body>
     <h1>かやのおと - settings</h1>
     <div class="block">
+        <h2>表示モード</h2>
+        <label>
+            <input type="checkbox" id="fieldTestModeCheckbox" onchange="toggleFieldTestMode()">
+            現地視認性検証モード（FIELD_TEST_MODE）
+        </label>
+        <div class="small">
+            ON: 屋外・半屋外での投影テスト向け（テキスト拡大・透明度向上）<br>
+            OFF: 通常表示（デフォルト）
+        </div>
+    </div>
+    <div class="block">
         <h2>現在の場所</h2>
         <label>場所を選択</label>
         <select id="placeSelect"></select>
@@ -121,6 +132,7 @@
     <script>
         const PLACE_STORAGE_KEY = "kaya-note-places";
         const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
+        const FIELD_TEST_MODE_STORAGE_KEY = "kaya-note-field-test-mode";
         const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
         const PLACES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=places`;
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzzzVbVPn5Uw7cVMzvBYgnk_otNhW5gVJc_9WOTVUYY_yvNaj_dnrqEgKP-b3GhgcCM/exec";
@@ -389,6 +401,24 @@
             if (places.length === 0) {
                 list.innerHTML = `<div class="small">places シートに場所がありません</div>`;
             }
+            
+            // FIELD_TEST_MODE checkbox の状態を復元
+            const fieldTestModeCheckbox = document.getElementById("fieldTestModeCheckbox");
+            const fieldTestMode = localStorage.getItem(FIELD_TEST_MODE_STORAGE_KEY);
+            fieldTestModeCheckbox.checked = fieldTestMode === "true";
+        }
+
+        function toggleFieldTestMode() {
+            const checkbox = document.getElementById("fieldTestModeCheckbox");
+            const value = checkbox.checked ? "true" : "false";
+            localStorage.setItem(FIELD_TEST_MODE_STORAGE_KEY, value);
+            
+            // 他のタブに通知
+            window.dispatchEvent(new StorageEvent("storage", {
+                key: FIELD_TEST_MODE_STORAGE_KEY,
+                newValue: value,
+                storageArea: localStorage
+            }));
         }
 
         loadPlaces();
