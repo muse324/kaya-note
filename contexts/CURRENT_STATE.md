@@ -20,6 +20,8 @@
 - view.html は場所変更時にテキスト表示をリセットして再読み込み
 - page title は places.title を参照
 - activePlaceId は localStorage に保持
+- setting.html の左右反転表示は `kaya-note-mirror-mode` として localStorage に保持
+- view.html は起動時と storage イベント時に左右反転表示を読み込み、`body.mirror-mode` で表示全体を反転
 - 表示フォントは Noto Sans JP
 
 ## 現在のスプレッドシート構造
@@ -84,3 +86,10 @@ columns:
 - テキスト透明度 1.4 倍、サイズ 1.3 倍、breathing 効果を 95-105% に縮小
 - ガイドテキストも 1.1-1.2 倍に拡大
 - デフォルトは false（通常表示）
+
+## 背面投影用機能
+
+- 左右反転表示を setting.html から選択可能
+- 設定値は `kaya-note-mirror-mode` として localStorage に保存
+- view.html は起動時に保存済み設定を読み込み、別タブで変更された場合も storage イベントで即時反映
+- input.html は参加者入力画面のため、左右反転表示の描画対象には含めない

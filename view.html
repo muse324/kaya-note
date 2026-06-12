@@ -113,11 +113,17 @@
             spread: 24 // semitone range
         };
 
-        function applyUiSettings() {
         function applyMirrorMode() {
             const mirrorMode = localStorage.getItem(MIRROR_MODE_STORAGE_KEY) === "true";
             document.body.classList.toggle("mirror-mode", mirrorMode);
         }
+
+        function loadDisplayModesFromStorage() {
+            FIELD_TEST_MODE = localStorage.getItem(FIELD_TEST_MODE_STORAGE_KEY) === "true";
+            applyMirrorMode();
+        }
+
+        function applyUiSettings() {
             const qr = document.getElementById("qrOverlay");
             if (qr && CONFIG.ui) {
                 qr.style.width = CONFIG.ui.qrWidth + "px";
@@ -1074,11 +1080,7 @@
         // --- p5 lifecycle ---
         function setup() {
             loadSettingsFromStorage();
-            
-            // FIELD_TEST_MODE を localStorage から読み込む
-            const fieldTestModeValue = localStorage.getItem(FIELD_TEST_MODE_STORAGE_KEY);
-            FIELD_TEST_MODE = fieldTestModeValue === "true";
-            applyMirrorMode();
+            loadDisplayModesFromStorage();
             
             applyPlaceSettings();
             let c = createCanvas(windowWidth, windowHeight);
