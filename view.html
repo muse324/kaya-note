@@ -14,6 +14,11 @@
             background: black;
         }
 
+        body.mirror-mode {
+            transform: scaleX(-1);
+            transform-origin: center center;
+        }
+
         #qrOverlay {
             position: fixed;
             bottom: 40px;
@@ -45,6 +50,7 @@
         let masterComp = null;
         const SETTINGS_STORAGE_KEY = "kaya-note-settings";
         const FIELD_TEST_MODE_STORAGE_KEY = "kaya-note-field-test-mode";
+        const MIRROR_MODE_STORAGE_KEY = "kaya-note-mirror-mode";
         const PLACE_STORAGE_KEY = "kaya-note-places";
         const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
         const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
@@ -108,6 +114,10 @@
         };
 
         function applyUiSettings() {
+        function applyMirrorMode() {
+            const mirrorMode = localStorage.getItem(MIRROR_MODE_STORAGE_KEY) === "true";
+            document.body.classList.toggle("mirror-mode", mirrorMode);
+        }
             const qr = document.getElementById("qrOverlay");
             if (qr && CONFIG.ui) {
                 qr.style.width = CONFIG.ui.qrWidth + "px";
@@ -311,6 +321,10 @@
             if (event.key === FIELD_TEST_MODE_STORAGE_KEY) {
                 FIELD_TEST_MODE = event.newValue === "true";
                 console.log("FIELD_TEST_MODE changed:", FIELD_TEST_MODE);
+            }
+            if (event.key === MIRROR_MODE_STORAGE_KEY) {
+                applyMirrorMode();
+                console.log("MIRROR_MODE changed:", event.newValue === "true");
             }
         });
 
@@ -1064,6 +1078,7 @@
             // FIELD_TEST_MODE を localStorage から読み込む
             const fieldTestModeValue = localStorage.getItem(FIELD_TEST_MODE_STORAGE_KEY);
             FIELD_TEST_MODE = fieldTestModeValue === "true";
+            applyMirrorMode();
             
             applyPlaceSettings();
             let c = createCanvas(windowWidth, windowHeight);

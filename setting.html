@@ -101,6 +101,14 @@
             ON: 屋外・半屋外での投影テスト向け（テキスト拡大・透明度向上）<br>
             OFF: 通常表示（デフォルト）
         </div>
+        <label>
+            <input type="checkbox" id="mirrorModeCheckbox" onchange="toggleMirrorMode()">
+            左右反転表示（背面投影用）
+        </label>
+        <div class="small">
+            ON: view.html の表示全体を左右反転します<br>
+            OFF: 通常表示（デフォルト）
+        </div>
     </div>
     <div class="block">
         <h2>現在の場所</h2>
@@ -133,6 +141,7 @@
         const PLACE_STORAGE_KEY = "kaya-note-places";
         const ACTIVE_PLACE_STORAGE_KEY = "kaya-note-active-place-id";
         const FIELD_TEST_MODE_STORAGE_KEY = "kaya-note-field-test-mode";
+        const MIRROR_MODE_STORAGE_KEY = "kaya-note-mirror-mode";
         const SPREADSHEET_ID = "1l2Ebe6o6l3irnh01hgDWIVw3pPY9cH71jOD7nArO-oE";
         const PLACES_CSV_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet=places`;
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzzzVbVPn5Uw7cVMzvBYgnk_otNhW5gVJc_9WOTVUYY_yvNaj_dnrqEgKP-b3GhgcCM/exec";
@@ -406,6 +415,11 @@
             const fieldTestModeCheckbox = document.getElementById("fieldTestModeCheckbox");
             const fieldTestMode = localStorage.getItem(FIELD_TEST_MODE_STORAGE_KEY);
             fieldTestModeCheckbox.checked = fieldTestMode === "true";
+
+            // MIRROR_MODE checkbox の状態を復元
+            const mirrorModeCheckbox = document.getElementById("mirrorModeCheckbox");
+            const mirrorMode = localStorage.getItem(MIRROR_MODE_STORAGE_KEY);
+            mirrorModeCheckbox.checked = mirrorMode === "true";
         }
 
         function toggleFieldTestMode() {
@@ -416,6 +430,19 @@
             // 他のタブに通知
             window.dispatchEvent(new StorageEvent("storage", {
                 key: FIELD_TEST_MODE_STORAGE_KEY,
+                newValue: value,
+                storageArea: localStorage
+            }));
+        }
+
+        function toggleMirrorMode() {
+            const checkbox = document.getElementById("mirrorModeCheckbox");
+            const value = checkbox.checked ? "true" : "false";
+            localStorage.setItem(MIRROR_MODE_STORAGE_KEY, value);
+            
+            // 他のタブに通知
+            window.dispatchEvent(new StorageEvent("storage", {
+                key: MIRROR_MODE_STORAGE_KEY,
                 newValue: value,
                 storageArea: localStorage
             }));
